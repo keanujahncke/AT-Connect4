@@ -1,33 +1,89 @@
-# AT Connect Four — GitHub Pages edition
+# AT Connect Four
 
-Static HTML, CSS, and JavaScript. No Node.js, build step, backend, or database.
+A multiplayer Connect Four game built using the **AT Protocol (atproto)**.
+
+Players can compete from different devices using their Bluesky accounts. Game invitations, player confirmations, and moves are stored in each player's AT Protocol repository rather than a centralized application database.
+
+The application runs entirely in the browser and can be hosted as a static website using GitHub Pages.
 
 ## Playing
 
-1. Both players visit the website and sign in with **separate Bluesky accounts** and dedicated **app passwords**. Short handles like `kjahncke` work.
-2. Host selects **Create match**, then **Copy invite code** and sends it to the guest.
-3. Guest pastes invite code, selects **Join match**, then sends the resulting **acceptance code** back to the host.
-4. Host pastes acceptance code and selects **Confirm opponent**.
-5. Both players' browsers poll their respective AT Protocol repositories every three seconds. The host is Red and moves first.
+1. Both players open the website and sign in using **separate Bluesky accounts** and dedicated **app passwords**.
+    - Short usernames such as `thomas` are automatically expanded to `thomas.bsky.social`.
+    - Custom domain handles such as `thomas.dev` must be entered in full.
+2. The host selects **Create match**, copies the generated **invite code**, and sends it to the other player.
+3. The guest enters the invite code, selects **Join match**, and sends the resulting **acceptance code** back to the host.
+4. The host enters the acceptance code and selects **Confirm opponent**.
+5. The game begins. The host plays **Red** and moves first, while the guest plays **Yellow**.
 
-## How it works
+Both browsers check for new moves approximately every three seconds.
 
-- Each game is identified by the host DID and a random 96-bit match ID encoded in the invite code.
-- The host writes a `match` record to their repository. The guest writes a `join` record to their own repository. The host writes a `confirm` record to their own repository, allowing both browsers to discover the two players without a shared server.
-- Each move is a `games.connectfour.move` record in the player's own repository. The game state is reconstructed by replaying valid moves.
-- No app-owned backend stores matches or moves. AT Protocol PDS infrastructure is still used.
+## How It Works
 
-## Important limitations
+The application uses AT Protocol to exchange game information without a dedicated application server.
 
-- **Prototype authentication:** App passwords are entered in the browser and submitted directly to `https://bsky.social` to create a session. Tokens remain in memory only (not localStorage), and refreshing the page signs you out. Use a **dedicated revocable app password**; never use your main password. AT Protocol OAuth is recommended for a production site.
-- Sign-in currently targets Bluesky's `bsky.social` entrypoint; other independent PDS account providers may require different login handling. The app resolves repository PDSs separately for record reads/writes.
-- Browser CORS policies must permit requests to the account server, DID resolver, and players' PDSs. If a PDS blocks browser requests, a pure-static frontend cannot bypass that restriction.
-- The host/guest two-code handshake is necessary because a host cannot automatically discover arbitrary join records written to an unknown guest's repository.
-- Records are publicly readable, including game history. The prototype is not hardened against malicious record injection, race conditions, or large record histories.
-- The first successful confirmation record in the host's repository determines the opponent. Invite codes should be treated as shareable, not secret credentials.
-- The app polls up to 2,000 records per player per refresh; large account histories can make it slow.
-- The app does not currently persist the active match code across reloads; save your invite code if you want to resume.
+### Matchmaking
 
-## Testing
+Each match is identified by the host's decentralized identifier (DID) and a randomly generated 96-bit match ID.
 
-Open `index.html` using a static file server or the GitHub Pages URL. A static HTTP server is preferred over `file://` for browser compatibility. Two different accounts are needed for multiplayer.
+The matchmaking process consists of three records:
+
+1. **Match:** The host publishes a `match` record to their repository.
+2. **Join:** The guest publishes a `join` record to their own repository.
+3. **Confirm:** The host publishes a `confirm` record identifying the guest.
+
+The invite and acceptance codes allow both players to discover the relevant repositories without relying on a centralized matchmaking service.
+
+### Game State
+
+Each player publishes their moves as records in their own AT Protocol repository, using the `games.connectfour.move` collection.
+
+To reconstruct the game, each browser:
+
+1. Resolves the players' DIDs to their Personal Data Servers (PDSs).
+2. Retrieves the relevant records from both repositories.
+3. Combines and validates the moves in turn order.
+4. Reconstructs the board and checks for a win or draw.
+
+The browsers poll the repositories every three seconds to detect new moves.
+
+**No application-owned backend or database is required.** The application still depends on AT Protocol infrastructure to authenticate users and store records.
+
+## Project Structure
+
+The static website consists of:
+
+- `index.html` — Website structure and game interface.
+- `style.css` — Styling and layout.
+- `app.js` — Authentication, AT Protocol communication, matchmaking, game logic, and synchronization.
+
+## Important Limitations
+
+This project is a functional prototype and is not intended for production use.
+
+- **Authentication:** Players authenticate using dedicated Bluesky app passwords. Credentials are sent directly from the browser to `bsky.social`, and session tokens are kept in memory rather than persistent browser storage. Refreshing the page signs the user out. Never use your main Bluesky password. AT Protocol OAuth would be preferable for a production application.
+- **Account providers:** Authentication currently uses Bluesky's `bsky.social` entry point. Accounts hosted by independent AT Protocol providers may require additional login handling.
+- **Browser compatibility:** The application depends on cross-origin requests being permitted by the relevant AT Protocol servers and DID resolvers.
+- **Matchmaking:** The two-code invitation process is necessary because the host cannot automatically discover a join record stored in an unknown guest's repository.
+- **Public records:** Game records are publicly readable, including match history and moves.
+- **Security and concurrency:** The prototype is not hardened against malicious record injection, conflicting moves, or race conditions. The first successful confirmation record determines the opponent.
+- **Performance:** The application polls up to 2,000 records per player per refresh, which may become inefficient as record histories grow.
+- **Session persistence:** Authentication sessions and the active match are not preserved across page reloads. Players should save their invite codes if they want to resume a match.
+
+## Testing Locally
+
+The project can be run using any static HTTP server.
+
+For example, using Python:
+
+```bash
+python -m http.server 8000
+```
+
+Then open:
+
+`http://localhost:8000`
+
+Alternatively, open the deployed GitHub Pages website.
+
+Two separate Bluesky accounts are required to test multiplayer gameplay.
