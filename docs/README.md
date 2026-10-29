@@ -2,14 +2,6 @@
 
 Static HTML, CSS, and JavaScript. No Node.js, build step, backend, or database.
 
-## Publish to GitHub Pages
-
-1. Create a GitHub repository (for example `connect4-at`).
-2. Upload **index.html**, **app.js**, **style.css** and this README to the repository root.
-3. Go to **Settings → Pages → Build and deployment → Deploy from a branch**.
-4. Choose `main` and `/ (root)`, then **Save**.
-5. Open the URL GitHub Pages provides (usually `https://USERNAME.github.io/REPOSITORY/`).
-
 ## Playing
 
 1. Both players visit the website and sign in with **separate Bluesky accounts** and dedicated **app passwords**. Short handles like `kjahncke` work.
